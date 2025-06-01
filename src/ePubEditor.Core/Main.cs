@@ -20,6 +20,7 @@ namespace ePubEditor.Core
 
             foreach (string epubFile in epubFiles)
             {
+                Debug.WriteLine(epubFile);
                 EpubFile epub = EpubFile.FromFilePath(epubFile);
                 BookMetadata? metadata = await FetchMetadata(epub);
 
@@ -35,6 +36,7 @@ namespace ePubEditor.Core
                 }
 
                 metadata.WriteMetadata(epubFile);
+                Debug.WriteLine("Done");
 
 
             }

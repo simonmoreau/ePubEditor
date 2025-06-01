@@ -20,44 +20,62 @@ namespace ePubEditor.Core
 
             foreach (string epubFile in epubFiles)
             {
-                // Example: extract title from file name (customize as needed)
-                string title = Path.GetFileNameWithoutExtension(epubFile);
-                if (title.Contains(" - "))
-                {
-                    title = title.Substring(0, title.IndexOf(" - "));
-                }
-                string author = Path.GetFileNameWithoutExtension(Path.GetDirectoryName(epubFile));
-                // Prepare the process start info
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "fetch-ebook-metadata",
-                    Arguments = $"--title \"{title}\" --authors \"{author}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                EpubFile epub = EpubFile.FromFilePath(epubFile);
+                BookMetadata? metadata = await FetchMetadata(epub);
 
-                using (var process = new Process { StartInfo = psi })
+                if (metadata == null)
                 {
-                    process.Start();
-                    string output = await process.StandardOutput.ReadToEndAsync();
-                    BookMetadata bookMetadata = BookMetadata.FromCliOutput(output);
-
-                    string error = await process.StandardError.ReadToEndAsync();
-                    await process.WaitForExitAsync();
-
-                    // Handle output/error as needed
-                    Console.WriteLine($"Output for '{title}':\n{output}");
-                    if (!string.IsNullOrWhiteSpace(error))
-                    {
-                        Console.WriteLine($"Error for '{title}':\n{error}");
-                    }
+                    epub = EpubFile.FromEpubMetadata(epubFile);
+                    metadata = await FetchMetadata(epub);
                 }
 
-                break;
+                if (metadata == null)
+                {
+                    continue;
+                }
+
+                metadata.WriteMetadata(epubFile);
+
+
             }
         }
 
+        private async Task<BookMetadata?> FetchMetadata(EpubFile epub)
+        {
+            // Prepare the process start info
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = "fetch-ebook-metadata",
+                Arguments = $"--title \"{epub.Title}\" --authors \"{epub.Author}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using (Process process = new Process { StartInfo = psi })
+            {
+                process.Start();
+                string output = await process.StandardOutput.ReadToEndAsync();
+
+                if (string.IsNullOrWhiteSpace(output))
+                {
+                    Console.WriteLine($"No metadata found for '{epub.Title}'");
+                    return null;
+                }
+                BookMetadata bookMetadata = BookMetadata.FromCliOutput(output);
+                return bookMetadata;
+
+                string error = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                // Handle output/error as needed
+                Console.WriteLine($"Output for '{epub.Title}':\n{output}");
+                if (!string.IsNullOrWhiteSpace(error))
+                {
+                    Console.WriteLine($"Error for '{epub.Title}':\n{error}");
+                }
+            }
+        }
     }
 }

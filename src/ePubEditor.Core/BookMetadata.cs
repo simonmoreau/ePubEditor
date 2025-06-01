@@ -1,4 +1,6 @@
-﻿using System;
+﻿using EpubCore;
+using EpubCore.Format;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -21,6 +23,71 @@ namespace ePubEditor.Core
 
         // Private constructor
         private BookMetadata() { }
+
+        public void WriteMetadata(string epubFile)
+        {
+            // Read an epub file
+            EpubBook book = EpubReader.Read(epubFile);
+            book.Format.Opf.Metadata.Dates.Clear();
+
+            if (!string.IsNullOrWhiteSpace(Description))
+            {
+                book.Format.Opf.Metadata.Descriptions.Clear();
+                book.Format.Opf.Metadata.Descriptions.Add(Description);
+            }
+
+            EpubWriter writer = new EpubWriter(book);
+
+            writer.SetTitle(Title); 
+
+            writer.ClearAuthors();
+            foreach (var author in Authors)
+            {
+                writer.AddAuthor(author);
+            }
+
+            
+            if (!string.IsNullOrWhiteSpace(Publisher))
+            {
+                writer.ClearPublishers();
+                writer.AddPublisher(Publisher);
+            }
+
+            foreach (var language in Languages)
+            {
+                writer.AddLanguage(language);
+            }
+
+            if (Published.HasValue)
+            {
+                writer.SetDate(Published.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(GoogleIdentifier))
+            {
+                writer.AddIdentifier("GOOGLE", GoogleIdentifier);
+            }
+
+            if (!string.IsNullOrWhiteSpace(IsbnIdentifier))
+            {
+                writer.AddISBN(IsbnIdentifier);
+            }
+
+
+            string authorNames = string.Join(", ", Authors);
+            string outputDir = @$"C:\Users\smoreau\Downloads\Output\{authorNames}\{Title}.epub";
+
+
+            // Ensure the output directory exists
+            string outputDirectory = Path.GetDirectoryName(outputDir);
+            if (!Directory.Exists(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+            }
+
+            writer.Write(outputDir);
+
+        }
 
         // Static factory method
         public static BookMetadata FromCliOutput(string output)

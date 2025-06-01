@@ -11,4 +11,10 @@
 	  <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="EpubCore">
+      <HintPath>..\..\..\EpubCore\EpubCore\bin\Debug\net6.0\EpubCore.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

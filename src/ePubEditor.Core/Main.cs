@@ -42,6 +42,8 @@ namespace ePubEditor.Core
                 {
                     process.Start();
                     string output = await process.StandardOutput.ReadToEndAsync();
+                    BookMetadata bookMetadata = BookMetadata.FromCliOutput(output);
+
                     string error = await process.StandardError.ReadToEndAsync();
                     await process.WaitForExitAsync();
 

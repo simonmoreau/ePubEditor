@@ -1,11 +1,14 @@
+using ePubEditor.Core;
+
 namespace ePubEditor.Test
 {
     public class MainTest
     {
         [Fact]
-        public void Test1()
+        public async Task Start()
         {
-
+            Main main = new Main();
+            await main.Start();
         }
     }
 }

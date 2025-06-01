@@ -41,7 +41,7 @@ namespace ePubEditor.Core
             writer.SetTitle(Title); 
 
             writer.ClearAuthors();
-            foreach (var author in Authors)
+            foreach (string author in Authors)
             {
                 writer.AddAuthor(author);
             }
@@ -53,7 +53,7 @@ namespace ePubEditor.Core
                 writer.AddPublisher(Publisher);
             }
 
-            foreach (var language in Languages)
+            foreach (string language in Languages)
             {
                 writer.AddLanguage(language);
             }
@@ -87,6 +87,39 @@ namespace ePubEditor.Core
 
             writer.Write(outputDir);
 
+        }
+
+        public string WriteMetadata()
+        {
+            string separator = ";";
+            // Helper to join lists as comma-separated values
+            string JoinList(IEnumerable<string> list) => list != null ? string.Join(",", list) : "";
+
+            // Format date as ISO 8601 or empty
+            string published = Published.HasValue ? Published.Value.ToString("o", CultureInfo.InvariantCulture) : "";
+
+            // Prepare fields in order
+            string[] fields = new[]
+            {
+                Title ?? "",
+                JoinList(Authors),
+                Publisher ?? "",
+                JoinList(Tags),
+                JoinList(Languages),
+                published,
+                GoogleIdentifier ?? "",
+                IsbnIdentifier ?? "",
+                Description ?? "",
+                CoverImagePath ?? ""
+            };
+
+            // Escape separator in fields if needed (basic CSV escaping)
+            string Escape(string s) =>
+                s.Contains(separator) || s.Contains("\"") || s.Contains("\n")
+                    ? $"\"{s.Replace("\"", "\"\"")}\""
+                    : s;
+
+            return string.Join(separator, fields.Select(Escape));
         }
 
         // Static factory method

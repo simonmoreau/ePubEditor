@@ -43,6 +43,14 @@ namespace ePubEditor.Core
             return new EpubFile(title, author);
         }
 
+        public static EpubFile FromMetadata(InitialMetadata metadata)
+        {
+            string title = metadata.Title;
+            string author = metadata.Authors;
+
+            return new EpubFile(title, author);
+        }
+
         private static string GetAuthorFromFileName(string epubFile)
         {
             return Path.GetFileNameWithoutExtension(Path.GetDirectoryName(epubFile));

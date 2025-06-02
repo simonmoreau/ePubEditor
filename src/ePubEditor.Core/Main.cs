@@ -1,14 +1,27 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using ePubEditor.Core.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace ePubEditor.Core
 {
     public class Main
     {
+        private readonly ServiceProvider _serviceProvider;
+
         public Main()
         {
-            ServiceProvider serviceProvider =  new ServiceCollection()
-                .BuildServiceProvider();
+            _serviceProvider = ConfigureServices(new ServiceCollection());
+        }
+
+        private ServiceProvider ConfigureServices(IServiceCollection services)
+        {
+            string baseUrl = "https://www.googleapis.com/books/v1/";
+            services.AddHttpClient<IGoogleBook, GoogleBook>
+                (client => client.BaseAddress = new Uri(baseUrl));
+
+            return services.BuildServiceProvider();
         }
 
         public async Task Start()
@@ -16,18 +29,28 @@ namespace ePubEditor.Core
             // Get all epub in the current directory
             List<InitialMetadata> initialMetadata = Helper.LoadObjectsFromCSV<InitialMetadata>("inputs");
 
+            IGoogleBook googleBook = _serviceProvider.GetRequiredService<IGoogleBook>();
             string outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output.csv";
             using (var writer = new StreamWriter(outputPath, append: true))
             {
                 foreach (InitialMetadata initialLine in initialMetadata)
                 {
                     Debug.WriteLine(initialLine.Uuid);
+
+                    if (initialLine.Isbn == null || initialLine.Isbn.Length < 10)
+                    {
+                        continue;
+                    }
                     try
                     {
                         BookMetadata? metadata = null;
                         if (!string.IsNullOrWhiteSpace(initialLine.Isbn))
                         {
-                            metadata = await FetchMetadata(initialLine.Isbn);
+                            Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Isbn);
+                            if (result?.Items != null && result.Items.Count > 0)
+                            {
+                                metadata = BookMetadata.FromGoogleResult(result, initialLine.Isbn);
+                            }
                         }
 
                         if (metadata == null)

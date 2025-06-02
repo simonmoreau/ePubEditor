@@ -1,5 +1,6 @@
 ﻿using EpubCore;
 using EpubCore.Format;
+using ePubEditor.Core.Models.GoogleBook;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -121,6 +122,44 @@ namespace ePubEditor.Core
 
             return string.Join(separator, fields.Select(Escape));
         }
+
+        public static BookMetadata FromGoogleResult(Result googleBookResult, string isbn)
+        {
+            if (googleBookResult?.Items == null || googleBookResult.Items.Count == 0) throw new ArgumentException("No items found in the provided Google Book result.");
+
+            Item item = googleBookResult.Items[0];
+            VolumeInfo info = item.VolumeInfo;
+            if (info == null) throw new ArgumentException("VolumeInfo is null in the provided Google Book item.");
+
+            BookMetadata metadata = new BookMetadata
+            {
+                Title = info.Title,
+                Authors = info.Authors ?? new List<string>(),
+                Publisher = info.Publisher,
+                Tags = info.Categories ?? new List<string>(),
+                Languages = !string.IsNullOrWhiteSpace(info.Language) ? new List<string> { info.Language } : new List<string>(),
+                Description = info.Description,
+                GoogleIdentifier = item.Id,
+                CoverImagePath = info.ImageLinks?.Thumbnail
+            };
+
+            // Parse published date (can be yyyy-MM-dd, yyyy-MM, or yyyy)
+            if (!string.IsNullOrWhiteSpace(info.PublishedDate))
+            {
+                DateTime published;
+                if (DateTime.TryParseExact(info.PublishedDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out published) ||
+                    DateTime.TryParseExact(info.PublishedDate, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out published) ||
+                    DateTime.TryParseExact(info.PublishedDate, "yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out published))
+                {
+                    metadata.Published = published;
+                }
+            }
+
+            metadata.IsbnIdentifier = isbn;
+
+            return metadata;
+        }
+
 
         // Static factory method
         public static BookMetadata FromCliOutput(string output)

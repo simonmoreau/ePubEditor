@@ -50,6 +50,7 @@ namespace ePubEditor.Core
                             }
                         }
 
+                        // We search by tiltle and author
                         if (metadata == null)
                         {
                             Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Title,initialLine.Authors);
@@ -70,6 +71,7 @@ namespace ePubEditor.Core
                             }
                         }
 
+                        // We search only by title
                         if (metadata == null)
                         {
                             Models.GoogleBook.Result result = await googleBook.GetBookInfoFromTitleAsync(initialLine.Title);
@@ -81,6 +83,27 @@ namespace ePubEditor.Core
                                     if (tempmetadata.Title == null) continue; // Skip if title is null
                                     int titleScore = Fuzz.Ratio(tempmetadata.Title, initialLine.Title);
                                     if (titleScore < 80) continue;
+                                    metadata = tempmetadata;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // We swap tiltle and author
+                        if (metadata == null)
+                        {
+                            Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Authors, initialLine.Title);
+                            if (result?.Items != null && result.Items.Count > 0)
+                            {
+                                foreach (Models.GoogleBook.Item item in result?.Items)
+                                {
+                                    BookMetadata tempmetadata = BookMetadata.FromGoogleResult(item, initialLine.Isbn);
+                                    if (tempmetadata.Title == null) continue; // Skip if title is null
+                                    int titleScore = Fuzz.Ratio(tempmetadata.Title, initialLine.Authors);
+                                    if (titleScore < 80) continue;
+                                    if (tempmetadata.Authors == null) continue; // Skip if authors are null
+                                    int authorScore = Fuzz.Ratio(string.Join(", ", tempmetadata.Authors), initialLine.Title);
+                                    if (authorScore < 80) continue;
                                     metadata = tempmetadata;
                                     break;
                                 }

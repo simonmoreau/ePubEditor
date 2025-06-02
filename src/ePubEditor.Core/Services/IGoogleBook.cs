@@ -11,5 +11,6 @@ namespace ePubEditor.Core.Services
     {
         Task<Result> GetBookInfoAsync(string insb);
         Task<Result> GetBookInfoAsync(string title, string author);
+        Task<Result> GetBookInfoFromTitleAsync(string title);
     }
 }

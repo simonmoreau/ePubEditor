@@ -152,7 +152,7 @@ namespace ePubEditor.Core
                 }
             }
 
-            if (isbn != null)
+            if (!string.IsNullOrEmpty(isbn))
             {
                 metadata.IsbnIdentifier = isbn;
             }

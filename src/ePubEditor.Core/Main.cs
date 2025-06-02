@@ -72,6 +72,23 @@ namespace ePubEditor.Core
 
                         if (metadata == null)
                         {
+                            Models.GoogleBook.Result result = await googleBook.GetBookInfoFromTitleAsync(initialLine.Title);
+                            if (result?.Items != null && result.Items.Count > 0)
+                            {
+                                foreach (Models.GoogleBook.Item item in result?.Items)
+                                {
+                                    BookMetadata tempmetadata = BookMetadata.FromGoogleResult(item, initialLine.Isbn);
+                                    if (tempmetadata.Title == null) continue; // Skip if title is null
+                                    int titleScore = Fuzz.Ratio(tempmetadata.Title, initialLine.Title);
+                                    if (titleScore < 80) continue;
+                                    metadata = tempmetadata;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (metadata == null)
+                        {
                             await writer.WriteLineAsync($"{initialLine.Uuid};;");
                         }
                         else

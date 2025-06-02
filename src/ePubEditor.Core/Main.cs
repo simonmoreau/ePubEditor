@@ -37,10 +37,6 @@ namespace ePubEditor.Core
                 {
                     Debug.WriteLine(initialLine.Uuid);
 
-                    if (initialLine.Isbn == null || initialLine.Isbn.Length < 10)
-                    {
-                        continue;
-                    }
                     try
                     {
                         BookMetadata? metadata = null;
@@ -55,8 +51,11 @@ namespace ePubEditor.Core
 
                         if (metadata == null)
                         {
-                            EpubFile epub = EpubFile.FromMetadata(initialLine);
-                            metadata = await FetchMetadata(epub);
+                            Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Title,initialLine.Authors);
+                            if (result?.Items != null && result.Items.Count > 0)
+                            {
+                                metadata = BookMetadata.FromGoogleResult(result, initialLine.Isbn);
+                            }
                         }
 
                         if (metadata == null)

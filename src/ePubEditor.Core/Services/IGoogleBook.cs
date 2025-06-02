@@ -10,5 +10,6 @@ namespace ePubEditor.Core.Services
     internal interface IGoogleBook
     {
         Task<Result> GetBookInfoAsync(string insb);
+        Task<Result> GetBookInfoAsync(string title, string author);
     }
 }

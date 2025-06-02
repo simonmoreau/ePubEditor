@@ -28,5 +28,17 @@ namespace ePubEditor.Core.Services
             return result;
         }
 
+        public async Task<Result> GetBookInfoAsync(string title, string author)
+        {
+            string encodeAuthor = Uri.EscapeDataString(author);
+            string encodeTitle = Uri.EscapeDataString(title);
+            string uri = $"volumes?q=inauthor:\"{encodeAuthor}\"intitle:\"{encodeTitle}\"";
+            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, uri);
+
+            Result result = await RequestSender.SendRequest<Result>(request, _httpClient, CancellationToken.None);
+
+            return result;
+        }
+
     }
 }

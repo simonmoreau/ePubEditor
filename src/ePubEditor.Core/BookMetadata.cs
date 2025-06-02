@@ -123,7 +123,7 @@ namespace ePubEditor.Core
             return string.Join(separator, fields.Select(Escape));
         }
 
-        public static BookMetadata FromGoogleResult(Result googleBookResult, string isbn)
+        public static BookMetadata FromGoogleResult(Result googleBookResult, string? isbn = null)
         {
             if (googleBookResult?.Items == null || googleBookResult.Items.Count == 0) throw new ArgumentException("No items found in the provided Google Book result.");
 
@@ -155,7 +155,21 @@ namespace ePubEditor.Core
                 }
             }
 
-            metadata.IsbnIdentifier = isbn;
+            if (isbn != null)
+            {
+                metadata.IsbnIdentifier = isbn;
+            }
+            else
+            {
+                // Try to get ISBN_13 first, then ISBN_10 if not found
+                string? isbn13 = info.IndustryIdentifiers?
+                    .FirstOrDefault(id => id.Type == "ISBN_13")?.Identifier;
+                string? isbn10 = info.IndustryIdentifiers?
+                    .FirstOrDefault(id => id.Type == "ISBN_10")?.Identifier;
+
+                metadata.IsbnIdentifier = isbn13 ?? isbn10;
+            }
+            
 
             return metadata;
         }

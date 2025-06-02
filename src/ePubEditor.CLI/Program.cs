@@ -12,7 +12,7 @@ namespace ePubEditor.CLI
             ServiceProvider serviceProvider = new ServiceCollection()
                 .BuildServiceProvider();
 
-            var main = serviceProvider.GetRequiredService<Main>();
+            Main main = new Main();
 
             await main.Start();
         }

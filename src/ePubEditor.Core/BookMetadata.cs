@@ -123,11 +123,8 @@ namespace ePubEditor.Core
             return string.Join(separator, fields.Select(Escape));
         }
 
-        public static BookMetadata FromGoogleResult(Result googleBookResult, string? isbn = null)
+        public static BookMetadata FromGoogleResult(Item item, string? isbn = null)
         {
-            if (googleBookResult?.Items == null || googleBookResult.Items.Count == 0) throw new ArgumentException("No items found in the provided Google Book result.");
-
-            Item item = googleBookResult.Items[0];
             VolumeInfo info = item.VolumeInfo;
             if (info == null) throw new ArgumentException("VolumeInfo is null in the provided Google Book item.");
 

@@ -1,4 +1,5 @@
 ﻿using ePubEditor.Core.Services;
+using FuzzySharp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,7 +32,7 @@ namespace ePubEditor.Core
 
             IGoogleBook googleBook = _serviceProvider.GetRequiredService<IGoogleBook>();
             string outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output.csv";
-            using (var writer = new StreamWriter(outputPath, append: true))
+            using (StreamWriter writer = new StreamWriter(outputPath, append: true))
             {
                 foreach (InitialMetadata initialLine in initialMetadata)
                 {
@@ -45,7 +46,7 @@ namespace ePubEditor.Core
                             Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Isbn);
                             if (result?.Items != null && result.Items.Count > 0)
                             {
-                                metadata = BookMetadata.FromGoogleResult(result, initialLine.Isbn);
+                                metadata = BookMetadata.FromGoogleResult(result.Items[0], initialLine.Isbn);
                             }
                         }
 
@@ -54,7 +55,18 @@ namespace ePubEditor.Core
                             Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Title,initialLine.Authors);
                             if (result?.Items != null && result.Items.Count > 0)
                             {
-                                metadata = BookMetadata.FromGoogleResult(result, initialLine.Isbn);
+                                foreach (Models.GoogleBook.Item item in result?.Items)
+                                {
+                                    BookMetadata tempmetadata = BookMetadata.FromGoogleResult(item, initialLine.Isbn);
+                                    if (tempmetadata.Title == null) continue; // Skip if title is null
+                                    int titleScore = Fuzz.Ratio(tempmetadata.Title, initialLine.Title);
+                                    if (titleScore < 80) continue;
+                                    if (tempmetadata.Authors == null) continue; // Skip if authors are null
+                                    int authorScore = Fuzz.Ratio(string.Join(", ", tempmetadata.Authors), initialLine.Authors);
+                                    if (authorScore < 80) continue;
+                                    metadata = tempmetadata;
+                                    break;
+                                }
                             }
                         }
 
@@ -115,7 +127,7 @@ namespace ePubEditor.Core
 
         private static async Task<BookMetadata?> ExecuteCommand(string epub, ProcessStartInfo psi)
         {
-            using (Process process = new Process { StartInfo = psi })
+            using (System.Diagnostics.Process process = new System.Diagnostics.Process { StartInfo = psi })
             {
                 process.Start();
                 string output = await process.StandardOutput.ReadToEndAsync();

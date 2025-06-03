@@ -5,7 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace ePubEditor.Core
+namespace ePubEditor.Core.Models
 {
     internal class InitialMetadata
     {

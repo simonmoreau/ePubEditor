@@ -1,4 +1,5 @@
-﻿using ePubEditor.Core.Services;
+﻿using EpubCore;
+using ePubEditor.Core.Services;
 using FuzzySharp;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,14 @@ namespace ePubEditor.Core
 
         public async Task Start()
         {
+            //await GoogleSearch();
+
+            EpubLister epubLister = new EpubLister();
+            await epubLister.ListEpub();
+        }
+
+        private async Task GoogleSearch()
+        {
             // Get all epub in the current directory
             List<InitialMetadata> initialMetadata = Helper.LoadObjectsFromCSV<InitialMetadata>("inputs");
 
@@ -53,7 +62,7 @@ namespace ePubEditor.Core
                         // We search by tiltle and author
                         if (metadata == null)
                         {
-                            Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Title,initialLine.Authors);
+                            Models.GoogleBook.Result result = await googleBook.GetBookInfoAsync(initialLine.Title, initialLine.Authors);
                             if (result?.Items != null && result.Items.Count > 0)
                             {
                                 foreach (Models.GoogleBook.Item item in result?.Items)
@@ -130,7 +139,6 @@ namespace ePubEditor.Core
 
                 }
             }
-
         }
 
         private async Task<BookMetadata?> FetchMetadata(EpubFile epub)

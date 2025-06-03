@@ -15,6 +15,8 @@ namespace ePubEditor.CLI
             Main main = new Main();
 
             await main.Start();
+
+            
         }
     }
 }

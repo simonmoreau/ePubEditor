@@ -21,6 +21,12 @@ namespace ePubEditor.Core
         public string IsbnIdentifier { get; set; }
         public string Description { get; set; }
         public string CoverImagePath { get; set; } // Path to cover image file
+        public string FilePath { get; set; } 
+
+
+        public string Author { get { return string.Join(", ", Authors);  } }
+        public string Tag { get { return string.Join(", ", Tags); } }
+        public string Language { get { return string.Join(", ", Languages); } }
 
         // Private constructor
         private BookMetadata() { }
@@ -123,6 +129,45 @@ namespace ePubEditor.Core
             return string.Join(separator, fields.Select(Escape));
         }
 
+        public static BookMetadata EmptyMetadata(string epubFile)
+        {
+            BookMetadata metadata = new BookMetadata();
+
+            metadata.FilePath = epubFile;
+
+            return metadata;
+        }
+        public static BookMetadata FromEpubFile(string epubFile)
+        {
+            BookMetadata metadata = new BookMetadata();
+
+            // Read metadata
+            EpubBook book = EpubReader.Read(epubFile);
+            metadata.Title = book.Title;
+            metadata.Authors.AddRange(book.Authors);
+            metadata.Publisher = string.Join(", ", book.Publishers);
+            metadata.Tags.AddRange(book.Format.Opf.Metadata.Subjects);
+            metadata.Languages.AddRange(book.Format.Opf.Metadata.Languages);
+            DateTime date = new DateTime();
+            DateTime.TryParse(book.Format.Opf.Metadata.Dates.Select(d => d.Text).ToList().FirstOrDefault(),out date);
+            metadata.Published = date;
+
+
+            string title = book.UniqueIdentifier;
+
+            EpubCore.Format.OpfMetadataIdentifier? identifier = book.Format.Opf.Metadata.Identifiers
+                .Where(i => i.Text.Length == 13 || i.Text.Length == 10).FirstOrDefault();
+
+            if (identifier != null)
+            {
+                metadata.IsbnIdentifier = identifier.Text;
+            }
+
+            metadata.Description = string.Join(", ", book.Format.Opf.Metadata.Descriptions); 
+            metadata.FilePath = epubFile;
+
+            return metadata;
+        }
         public static BookMetadata FromGoogleResult(Item item, string? isbn = null)
         {
             VolumeInfo info = item.VolumeInfo;

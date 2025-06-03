@@ -30,6 +30,8 @@ namespace ePubEditor.Core
 
             services = AddAIServices(services);
 
+            services.AddSingleton<AIMetadataFetcher>();
+
             return services.BuildServiceProvider();
         }
 
@@ -65,8 +67,11 @@ namespace ePubEditor.Core
         {
             //await GoogleSearch();
 
-            EpubLister epubLister = new EpubLister();
-            await epubLister.ListEpub();
+            //EpubLister epubLister = new EpubLister();
+            //await epubLister.ListEpub();
+
+            AIMetadataFetcher? metatadataFetcher = _serviceProvider.GetService<AIMetadataFetcher>();
+            await metatadataFetcher.FetchMetadata();
         }
 
 

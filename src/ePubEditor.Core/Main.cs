@@ -7,6 +7,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenAI.Chat;
 using System.ClientModel;
 using System.Diagnostics;
 using System.Reflection;
@@ -50,15 +51,16 @@ namespace ePubEditor.Core
             Uri endpoint = new Uri(azureOpenAISettigns.Endpoint);
             ApiKeyCredential apiKey = new ApiKeyCredential(azureOpenAISettigns.Key);
 
-            IChatClient chatClient = new AzureOpenAIClient(
-                        endpoint,
-                        apiKey)
-                    .AsChatClient(deploymentName)
-                    .AsBuilder()
-                    .UseFunctionInvocation()
-                    .Build();
+            AzureOpenAIClient azureClient = new(
+                    endpoint,
+                   apiKey);
 
-            services.AddChatClient(chatClient);
+            ChatClient chatClient = azureClient.GetChatClient(azureOpenAISettigns.ModelId);
+
+            services.AddSingleton<ChatClient>(chatClient);
+
+            Gemini? geminiSettings = config.GetSection(nameof(Gemini)).Get<Gemini>();
+
 
             return services;
         }
@@ -71,7 +73,7 @@ namespace ePubEditor.Core
             //await epubLister.ListEpub();
 
             AIMetadataFetcher? metatadataFetcher = _serviceProvider.GetService<AIMetadataFetcher>();
-            await metatadataFetcher.FetchMetadata();
+            await metatadataFetcher.FetchMetadataWithOpenAI();
         }
 
 

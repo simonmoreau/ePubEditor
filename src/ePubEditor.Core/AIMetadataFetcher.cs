@@ -1,5 +1,6 @@
 ﻿
 using CsvHelper;
+using CsvHelper.Configuration;
 using ePubEditor.Core.Models;
 using ePubEditor.Core.Services;
 using Microsoft.Extensions.AI;
@@ -26,7 +27,7 @@ namespace ePubEditor.Core
         private readonly GenerativeModel _generativeModel;
         private readonly List<BookMetadata> _completedBookMetadata = new List<BookMetadata>();
         private readonly object _completedBookMetadataLock = new object();
-
+        private readonly string _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_gemini.csv";
 
         public AIMetadataFetcher(ChatClient chatClient, GenerativeModel generativeModel)
         {
@@ -53,11 +54,41 @@ namespace ePubEditor.Core
         {
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
-            await CommpleteMetadata(epubFileMetadata.Take(5).ToList());
+            const int batchSize = 40;
+            const int maxCallsPerMinute = 15;
+            const int delayBetweenCallsMs = 3000; // 60,000 ms / 15 calls = 4,000 ms
 
+            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(120)
+                .Select((item, index) => new { item, index })
+                .GroupBy(x => x.index / batchSize)
+                .Select(g => g.Select(x => x.item).ToList())
+                .ToList();
+
+            int i = 1;
+            foreach (List<EpubFileMetadata>? batch in batches)
+            {
+                Console.WriteLine($"Starting {i}/{batches.Count}");
+                Task metadataTask = CommpleteMetadata(batch);
+                Task delayTask = Task.Delay(delayBetweenCallsMs);
+                await Task.WhenAll(metadataTask, delayTask);
+                Console.WriteLine($"End {i}/{batches.Count}");
+                i++;
+            }
+
+            CsvConfiguration config = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true,
+                Delimiter = ";"
+            };
+
+            using (StreamWriter writer = new StreamWriter(_outputPath))
+            using (CsvWriter csv = new CsvWriter(writer, config))
+            {
+                csv.WriteRecords(_completedBookMetadata);
+            }
         }
 
-        private async Task CommpleteMetadata(List<EpubFileMetadata> epubFileMetadata)
+        private async Task CommpleteMetadata(List<EpubFileMetadata> epubFilesMetadata)
         {
 
             JsonSerializerOptions options = new()
@@ -68,16 +99,17 @@ namespace ePubEditor.Core
                 }
             };
 
-            string fileMetadata = JsonSerializer.Serialize(epubFileMetadata, options);
+            string fileMetadata = JsonSerializer.Serialize(epubFilesMetadata, options);
 
             // Prepare the prompt with the metadata of the epub files
             string prompt = "Here is a list of epub file matadata in json format :" +
                     $"{fileMetadata}" +
                     "These metadata contains Alternate_Author, Second_Alternate_Author and Alternate_Title which may or may not be accurate but can help you identify the book " +
-                    "Please complete each book metadata as best as you can by using" +
-                    "both the text provided along with your own knowledge about these book." +
-                    "If you know that the book is part of a series, please add the series to the result." +
-                    "If the language is 'UND', please replace it with your own knowledge about the book.";
+                    "Please complete each book metadata as best as you can by using " +
+                    "both the text provided along with your own knowledge about these book. " +
+                    "If you know that the book is part of a series, please add the series to the result. " +
+                    "If some data is missing from the metadata, complete it based on your own knowledge. " +
+                    "If the language is 'UND', please replace it with your own knowledge about the book. ";
 
             GenerationConfig generationConfig = new GenerationConfig()
             {
@@ -85,7 +117,7 @@ namespace ePubEditor.Core
                 ResponseSchema = new List<OutputMetadata>()
             };
 
-            CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
+            //CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
 
             GenerateContentResponse response = await _generativeModel.GenerateContent(prompt, generationConfig = generationConfig);
 
@@ -94,29 +126,39 @@ namespace ePubEditor.Core
                 PropertyNameCaseInsensitive = true
             };
 
-            List<OutputMetadata> outputMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(response.Text, deserializeOptions);
+            Console.Write(response.Text);
+            List<OutputMetadata> outputsMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(response.Text, deserializeOptions);
 
             List<BookMetadata> completedMetadata = new List<BookMetadata>();
 
-            for (int i = 0; i < outputMetadata.Count; i++)
+            for (int i = 0; i < outputsMetadata.Count; i++)
             {
-                EpubFileMetadata epubFileMetadata1 = epubFileMetadata[i];
+                EpubFileMetadata epubFileMetadata = epubFilesMetadata[i];
+                OutputMetadata outputMetadata = outputsMetadata[i];
 
-                BookMetadata bookMetadata = BookMetadata.EmptyMetadata(epubFileMetadata1.FilePath);
-                bookMetadata.Title = outputMetadata[i].Title ?? epubFileMetadata1.Title;
-                bookMetadata.Authors.Add(outputMetadata[i].Authors);
-                bookMetadata.Publisher = outputMetadata[i].Publisher ?? epubFileMetadata1.Publisher;
-                bookMetadata.Tags.Add(outputMetadata[i].Tags);
-                bookMetadata.Languages.Add(outputMetadata[i].Languages);
+                BookMetadata bookMetadata = BookMetadata.EmptyMetadata(epubFileMetadata.FilePath);
 
-                if (outputMetadata[i].PublicationYear != 0)
+                bookMetadata.Title = SelectValue(outputMetadata.Title, epubFileMetadata.Title);
+
+                bookMetadata.Authors.Add(outputsMetadata[i].Authors);
+
+                bookMetadata.Publisher = SelectValue(outputMetadata.Publisher, epubFileMetadata.Publisher);
+                bookMetadata.Tags.Add(outputsMetadata[i].Tags);
+                bookMetadata.Languages.Add(outputsMetadata[i].Languages);
+                bookMetadata.Series = outputsMetadata[i].Series;
+
+                if (outputsMetadata[i].PublicationYear != 0)
                 {
-                    bookMetadata.Published = new DateTime(outputMetadata[i].PublicationYear, 1, 1);
+                    bookMetadata.Published = new DateTime(outputsMetadata[i].PublicationYear, 1, 1);
                 }
 
-                bookMetadata.IsbnIdentifier = epubFileMetadata1.IsbnIdentifier;
-                bookMetadata.GoogleIdentifier = epubFileMetadata1.GoogleIdentifier;
-                bookMetadata.Description = outputMetadata[i].Description ?? epubFileMetadata1.Description;
+                bookMetadata.IsbnIdentifier = epubFileMetadata.IsbnIdentifier;
+                bookMetadata.GoogleIdentifier = epubFileMetadata.GoogleIdentifier;
+
+                bookMetadata.Description = SelectValue(epubFileMetadata.Description, outputMetadata.Description)
+                    .Replace("SUMMARY:", "")
+                    .Replace('\n', ' ' )
+                    .Replace('\r', ' ');
 
                 completedMetadata.Add(bookMetadata);
             }
@@ -126,6 +168,25 @@ namespace ePubEditor.Core
                 _completedBookMetadata.AddRange(completedMetadata);
             }
 
+        }
+
+        private string SelectValue(string? firstValue, string? fallbackValue)
+        {
+            if (string.IsNullOrEmpty(firstValue))
+            {
+                if (string.IsNullOrEmpty(fallbackValue))
+                {
+                    return string.Empty;
+                }
+                else
+                {
+                    return fallbackValue;
+                }
+            }
+            else
+            {
+                return firstValue;
+            }
         }
 
         private void PromptPreparationModifier(JsonTypeInfo typeInfo)

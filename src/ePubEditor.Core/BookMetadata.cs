@@ -13,8 +13,8 @@ namespace ePubEditor.Core
     internal class BookMetadata : BaseMetadata
     {
         public string CoverImagePath { get; set; } // Path to cover image file
-        public string FilePath { get; set; } 
-
+        public string FilePath { get; set; }
+        public string Series { get; set; }
 
         public string Author { get { return string.Join(", ", Authors);  } }
         public string Tag { get { return string.Join(", ", Tags); } }

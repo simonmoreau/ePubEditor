@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace ePubEditor.Core.Models
 {
-    internal class InitialMetadata
+    internal class CalibreMetadata
     {
         public string AuthorSort { get; set; }
         public string Authors { get; set; }
@@ -32,7 +32,7 @@ namespace ePubEditor.Core.Models
         public string Uuid { get; set; }
     }
 
-    internal sealed class InitialMetadataMap : ClassMap<InitialMetadata>
+    internal sealed class InitialMetadataMap : ClassMap<CalibreMetadata>
     {
         public InitialMetadataMap()
         {

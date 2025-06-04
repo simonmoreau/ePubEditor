@@ -1,5 +1,6 @@
 ﻿using EpubCore;
 using EpubCore.Format;
+using ePubEditor.Core.Models;
 using ePubEditor.Core.Models.GoogleBook;
 using System;
 using System.Collections.Generic;
@@ -9,17 +10,8 @@ using System.Text.RegularExpressions;
 
 namespace ePubEditor.Core
 {
-    internal class BookMetadata
+    internal class BookMetadata : BaseMetadata
     {
-        public string Title { get; set; }
-        public List<string> Authors { get; set; } = new List<string>();
-        public string Publisher { get; set; }
-        public List<string> Tags { get; set; } = new List<string>();
-        public List<string> Languages { get; set; } = new List<string>();
-        public DateTime? Published { get; set; }
-        public string GoogleIdentifier { get; set; }
-        public string IsbnIdentifier { get; set; }
-        public string Description { get; set; }
         public string CoverImagePath { get; set; } // Path to cover image file
         public string FilePath { get; set; } 
 

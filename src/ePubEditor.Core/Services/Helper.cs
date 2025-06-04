@@ -57,7 +57,7 @@ namespace ePubEditor.Core.Services
 
                 using (CsvReader csv = new CsvReader(reader, config))
                 {
-                    if (typeof(T) == typeof(InitialMetadata))
+                    if (typeof(T) == typeof(CalibreMetadata))
                     {
                         csv.Context.RegisterClassMap<InitialMetadataMap>();
                     }

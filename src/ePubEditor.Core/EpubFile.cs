@@ -44,7 +44,7 @@ namespace ePubEditor.Core
             return new EpubFile(title, author);
         }
 
-        public static EpubFile FromMetadata(InitialMetadata metadata)
+        public static EpubFile FromMetadata(CalibreMetadata metadata)
         {
             string title = metadata.Title;
             string author = metadata.Authors;

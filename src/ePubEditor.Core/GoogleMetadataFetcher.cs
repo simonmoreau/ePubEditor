@@ -22,12 +22,12 @@ namespace ePubEditor.Core
         public async Task GoogleSearch()
         {
             // Get all epub in the current directory
-            List<InitialMetadata> initialMetadata = Helper.LoadObjectsFromCSV<InitialMetadata>("inputs");
+            List<CalibreMetadata> initialMetadata = Helper.LoadObjectsFromCSV<CalibreMetadata>("inputs");
 
             string outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output.csv";
             using (StreamWriter writer = new StreamWriter(outputPath, append: true))
             {
-                foreach (InitialMetadata initialLine in initialMetadata)
+                foreach (CalibreMetadata initialLine in initialMetadata)
                 {
                     Debug.WriteLine(initialLine.Uuid);
 

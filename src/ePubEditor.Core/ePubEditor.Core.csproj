@@ -26,10 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Ressources\" />
-  </ItemGroup>
-
-  <ItemGroup>
+    <None Update="Ressources\epub_files.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Ressources\inputs.csv">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

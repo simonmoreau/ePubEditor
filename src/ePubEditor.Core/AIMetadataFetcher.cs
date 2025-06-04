@@ -1,5 +1,6 @@
 ﻿
 using Microsoft.Extensions.AI;
+using Mscc.GenerativeAI;
 using OpenAI.Chat;
 using System;
 using System.Collections.Generic;
@@ -12,10 +13,12 @@ namespace ePubEditor.Core
     internal class AIMetadataFetcher
     {
         private readonly ChatClient _chatClient;
+        private readonly GenerativeModel _generativeModel;
 
-        public AIMetadataFetcher(ChatClient chatClient)
+        public AIMetadataFetcher(ChatClient chatClient, GenerativeModel generativeModel)
         {
             _chatClient = chatClient;
+            _generativeModel = generativeModel;
         }
 
         public async Task FetchMetadataWithOpenAI()
@@ -30,14 +33,16 @@ namespace ePubEditor.Core
                         new UserChatMessage("Hi, can you help me?")
                     ]);
 
-            var result = completion.Content.First().Text;
+            string result = completion.Content.First().Text;
         }
 
         public async Task FetchMetadataWithGemini()
         {
-            //IMessage reply = await _geminiAgent.SendAsync("Can you write a piece of C# code to calculate 100th of fibonacci?");
+            string prompt = "Hello";
 
-            //string result = reply.GetContent();
+            GenerateContentResponse response = _generativeModel.GenerateContent(prompt).Result;
+
+            string result = response.Text;
         }
     }
 }

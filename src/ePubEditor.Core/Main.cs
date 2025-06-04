@@ -7,6 +7,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Mscc.GenerativeAI;
 using OpenAI.Chat;
 using System.ClientModel;
 using System.Diagnostics;
@@ -62,6 +63,14 @@ namespace ePubEditor.Core
             Gemini? geminiSettings = config.GetSection(nameof(Gemini)).Get<Gemini>();
 
 
+            GenerativeModel model = new GenerativeModel()
+            {
+                ApiKey = geminiSettings.Key,
+                Model = Model.Gemini15Flash,
+            };
+
+            services.AddSingleton<GenerativeModel>(model);
+
             return services;
         }
 
@@ -73,7 +82,7 @@ namespace ePubEditor.Core
             //await epubLister.ListEpub();
 
             AIMetadataFetcher? metatadataFetcher = _serviceProvider.GetService<AIMetadataFetcher>();
-            await metatadataFetcher.FetchMetadataWithOpenAI();
+            await metatadataFetcher.FetchMetadataWithGemini();
         }
 
 

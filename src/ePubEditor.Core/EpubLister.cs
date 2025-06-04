@@ -41,8 +41,8 @@ namespace ePubEditor.Core
                 Delimiter = ";"
             };
 
-            using (var writer = new StreamWriter(_outputPath))
-            using (var csv = new CsvWriter(writer, config))
+            using (StreamWriter writer = new StreamWriter(_outputPath))
+            using (CsvWriter csv = new CsvWriter(writer, config))
             {
                 csv.WriteRecords(_books);
             }

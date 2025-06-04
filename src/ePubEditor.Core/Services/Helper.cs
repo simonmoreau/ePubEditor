@@ -40,13 +40,13 @@ namespace ePubEditor.Core.Services
 
             using (StreamReader reader = new StreamReader(csvPath))
             {
-                var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+                CsvConfiguration config = new CsvConfiguration(CultureInfo.InvariantCulture)
                 {
                     ShouldSkipRecord = args =>
                     {
                         if (args.Row.Parser.RawRow > 10)
                         {
-                            var rawRow = args.Row.Parser.RawRecord;
+                            string rawRow = args.Row.Parser.RawRecord;
                             if (rawRow.StartsWith("\"Date\",\"Time\",")) return true;
                         }
 

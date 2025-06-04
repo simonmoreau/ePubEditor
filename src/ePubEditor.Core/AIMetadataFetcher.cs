@@ -55,39 +55,28 @@ namespace ePubEditor.Core
         {
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
-            const int batchSize = 40;
-            const int maxCallsPerMinute = 10;
+            const int batchSize = 10;
+            const int maxCallsPerMinute = 15;
             const int delayBetweenCallsMs = 4000; // 60,000 ms / 15 calls = 4,000 ms
 
-            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(40 * maxCallsPerMinute)
+            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize*5)
                 .Select((item, index) => new { item, index })
-                .GroupBy(x => x.index / (batchSize * maxCallsPerMinute))
+                .GroupBy(x => x.index / (batchSize))
                 .Select(g => g.Select(x => x.item).ToList())
                 .ToList();
 
             int i = 1;
             foreach (List<EpubFileMetadata>? batch in batches)
             {
-                
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 Console.WriteLine($"Starting {i}/{batches.Count}");
 
-                List<List<EpubFileMetadata>> subBatches = batch
-                    .Select((item, index) => new { item, index })
-                    .GroupBy(x => x.index / batchSize)
-                    .Select(g => g.Select(x => x.item).ToList())
-                    .ToList();
-
-                List<Task> subBatchesTasks = new List<Task>();
-                foreach (List<EpubFileMetadata>? subBatch in subBatches)
-                {
-                    subBatchesTasks.Add(CommpleteMetadata(subBatch));
-                }
-                
-                Task runAllRequest = Task.WhenAll(subBatchesTasks);
+                Task runAllRequest = CommpleteMetadata(batch);
                 Task delayTask = Task.Delay(delayBetweenCallsMs);
                 await Task.WhenAll(runAllRequest, delayTask);
 
-                Console.WriteLine($"End {i}/{batches.Count}");
+                stopwatch.Stop();
+                Console.WriteLine($"{stopwatch.Elapsed} - End {i}/{batches.Count}");
                 i++;
             }
 

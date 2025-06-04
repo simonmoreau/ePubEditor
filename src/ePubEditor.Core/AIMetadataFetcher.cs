@@ -53,11 +53,11 @@ namespace ePubEditor.Core
             {
                 TypeInfoResolver = new DefaultJsonTypeInfoResolver
                 {
-                    Modifiers = { IgnorePublished }
+                    Modifiers = { PromptPreparationModifier }
                 }
             };
 
-            string fileMetadata = JsonSerializer.Serialize(epubFileMetadata.Take(10),options );
+            string fileMetadata = JsonSerializer.Serialize(epubFileMetadata.Take(40),options );
 
         // Prepare the prompt with the metadata of the epub files
         string prompt = "Here is a list of epub file matadata in json format :" +
@@ -68,28 +68,50 @@ namespace ePubEditor.Core
                 "If you know that the book is part of a series, please add the series to the result." +
                 "If the language is 'UND', please replace it with your own knowledge about the book.";
 
-            var generationConfig = new GenerationConfig()
+            GenerationConfig generationConfig = new GenerationConfig()
             {
                 ResponseMimeType = "application/json",
                 ResponseSchema = new List<OutputMetadata>()
             };
+
+            CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
 
             GenerateContentResponse response = await _generativeModel.GenerateContent(prompt, generationConfig = generationConfig);
 
             string result = response.Text;
         }
 
-        private static void IgnorePublished(JsonTypeInfo typeInfo)
+        private void PromptPreparationModifier(JsonTypeInfo typeInfo)
         {
             if (typeInfo.Type != typeof(EpubFileMetadata))
                 return;
 
-            foreach (var prop in typeInfo.Properties)
+            string[] excludedProperties = [
+                nameof(EpubFileMetadata.GoogleIdentifier),
+                nameof(EpubFileMetadata.Published),
+                nameof(EpubFileMetadata.CoverImagePath),
+                nameof(EpubFileMetadata.FilePath)
+            ];
+
+            foreach (JsonPropertyInfo prop in typeInfo.Properties)
             {
-                if (prop.Name == nameof(EpubFileMetadata.Published))
+                if (excludedProperties.Contains(prop.Name))
+                {
+                    // Set ShouldSerialize to always return false for the 'Published' property
+                    prop.ShouldSerialize = (context, val) => false;
+                }
+
+                if (prop.Name == nameof(EpubFileMetadata.Language))
                 {
                     // Set ShouldSerialize to always return false for the 'Author' property
-                    prop.ShouldSerialize = static (context, val) => false;
+                    prop.ShouldSerialize = (context, val) =>
+                    {
+                        if (val is string str && str == "UND")
+                        {
+                            return false; // Do not serialize if the language is 'UND'
+                        }
+                        return true; // Otherwise, serialize normally
+                    };
                 }
             }
         }

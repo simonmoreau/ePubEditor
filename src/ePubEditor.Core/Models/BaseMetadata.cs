@@ -27,7 +27,7 @@ namespace ePubEditor.Core.Models
         public string Series { get; set; }
         public string Tags { get; set; }
         public string Languages { get; set; }
-        public string Published { get; set; }
+        public int PublicationYear { get; set; }
         public string GoogleIdentifier { get; set; }
         public string IsbnIdentifier { get; set; }
         public string Description { get; set; }

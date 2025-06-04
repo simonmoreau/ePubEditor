@@ -22,14 +22,10 @@ namespace ePubEditor.Core.Models
     internal class OutputMetadata
     {
         public string Title { get; set; }
-        public string Authors { get; set; }
-        public string Publisher { get; set; }
+        public string Author { get; set; }
         public string Series { get; set; }
-        public string Tags { get; set; }
-        public string Languages { get; set; }
+        public string Language { get; set; }
         public int PublicationYear { get; set; }
-        public string GoogleIdentifier { get; set; }
-        public string IsbnIdentifier { get; set; }
         public string Description { get; set; }
     }
 }

@@ -9,6 +9,7 @@ using Mscc.GenerativeAI;
 using OpenAI.Chat;
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -55,22 +56,37 @@ namespace ePubEditor.Core
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
             const int batchSize = 40;
-            const int maxCallsPerMinute = 15;
-            const int delayBetweenCallsMs = 3000; // 60,000 ms / 15 calls = 4,000 ms
+            const int maxCallsPerMinute = 10;
+            const int delayBetweenCallsMs = 4000; // 60,000 ms / 15 calls = 4,000 ms
 
-            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(120)
+            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(40 * maxCallsPerMinute)
                 .Select((item, index) => new { item, index })
-                .GroupBy(x => x.index / batchSize)
+                .GroupBy(x => x.index / (batchSize * maxCallsPerMinute))
                 .Select(g => g.Select(x => x.item).ToList())
                 .ToList();
 
             int i = 1;
             foreach (List<EpubFileMetadata>? batch in batches)
             {
+                
                 Console.WriteLine($"Starting {i}/{batches.Count}");
-                Task metadataTask = CommpleteMetadata(batch);
+
+                List<List<EpubFileMetadata>> subBatches = batch
+                    .Select((item, index) => new { item, index })
+                    .GroupBy(x => x.index / batchSize)
+                    .Select(g => g.Select(x => x.item).ToList())
+                    .ToList();
+
+                List<Task> subBatchesTasks = new List<Task>();
+                foreach (List<EpubFileMetadata>? subBatch in subBatches)
+                {
+                    subBatchesTasks.Add(CommpleteMetadata(subBatch));
+                }
+                
+                Task runAllRequest = Task.WhenAll(subBatchesTasks);
                 Task delayTask = Task.Delay(delayBetweenCallsMs);
-                await Task.WhenAll(metadataTask, delayTask);
+                await Task.WhenAll(runAllRequest, delayTask);
+
                 Console.WriteLine($"End {i}/{batches.Count}");
                 i++;
             }
@@ -126,8 +142,17 @@ namespace ePubEditor.Core
                 PropertyNameCaseInsensitive = true
             };
 
+            Console.WriteLine("Response from Gemini: ");
+            Console.WriteLine("--------------------------------------------------");
             Console.Write(response.Text);
-            List<OutputMetadata> outputsMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(response.Text, deserializeOptions);
+
+            if (string.IsNullOrEmpty(response.Text))
+            {
+                Console.WriteLine("No response received from Gemini.");
+                return;
+            }
+            string sanitizeText = response.Text.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace("\t","");
+            List<OutputMetadata> outputsMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(sanitizeText, deserializeOptions);
 
             List<BookMetadata> completedMetadata = new List<BookMetadata>();
 
@@ -140,25 +165,23 @@ namespace ePubEditor.Core
 
                 bookMetadata.Title = SelectValue(outputMetadata.Title, epubFileMetadata.Title);
 
-                bookMetadata.Authors.Add(outputsMetadata[i].Authors);
+                bookMetadata.Authors.Add(outputMetadata.Author);
 
-                bookMetadata.Publisher = SelectValue(outputMetadata.Publisher, epubFileMetadata.Publisher);
-                bookMetadata.Tags.Add(outputsMetadata[i].Tags);
-                bookMetadata.Languages.Add(outputsMetadata[i].Languages);
-                bookMetadata.Series = outputsMetadata[i].Series;
+                bookMetadata.Publisher = epubFileMetadata.Publisher;
+                bookMetadata.Tags.Add(epubFileMetadata.Tag);
+                bookMetadata.Languages.Add(outputMetadata.Language);
+                bookMetadata.Series = outputMetadata.Series;
 
-                if (outputsMetadata[i].PublicationYear != 0)
+                if (outputMetadata.PublicationYear != 0)
                 {
-                    bookMetadata.Published = new DateTime(outputsMetadata[i].PublicationYear, 1, 1);
+                    bookMetadata.Published = new DateTime(outputMetadata.PublicationYear, 1, 1);
                 }
 
                 bookMetadata.IsbnIdentifier = epubFileMetadata.IsbnIdentifier;
                 bookMetadata.GoogleIdentifier = epubFileMetadata.GoogleIdentifier;
 
-                bookMetadata.Description = SelectValue(epubFileMetadata.Description, outputMetadata.Description)
-                    .Replace("SUMMARY:", "")
-                    .Replace('\n', ' ' )
-                    .Replace('\r', ' ');
+                bookMetadata.Description = SelectValue(epubFileMetadata.Description, outputMetadata.Description).Replace("SUMMARY:", "");
+
 
                 completedMetadata.Add(bookMetadata);
             }

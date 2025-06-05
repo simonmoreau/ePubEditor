@@ -25,15 +25,15 @@ namespace ePubEditor.Core
     internal class AIMetadataFetcher
     {
         private readonly ChatClient _chatClient;
-        private readonly GenerativeModel _generativeModel;
+        private readonly Gemini _gemeniSettings;
         private readonly List<BookMetadata> _completedBookMetadata = new List<BookMetadata>();
         private readonly object _completedBookMetadataLock = new object();
         private readonly string _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_gemini.csv";
 
-        public AIMetadataFetcher(ChatClient chatClient, GenerativeModel generativeModel)
+        public AIMetadataFetcher(ChatClient chatClient, IOptions<Gemini> gemeniSettings)
         {
             _chatClient = chatClient;
-            _generativeModel = generativeModel;
+            _gemeniSettings = gemeniSettings.Value;
         }
 
         public async Task FetchMetadataWithOpenAI()
@@ -55,13 +55,13 @@ namespace ePubEditor.Core
         {
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
-            const int batchSize = 10;
+            const int batchSize = 40;
             const int maxCallsPerMinute = 15;
-            const int delayBetweenCallsMs = 4000; // 60,000 ms / 15 calls = 4,000 ms
+            const int delayBetweenCallsMs = 60000; // 60,000 ms  = 1 m
 
-            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize*5)
+            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize* maxCallsPerMinute*2)
                 .Select((item, index) => new { item, index })
-                .GroupBy(x => x.index / (batchSize))
+                .GroupBy(x => x.index / (batchSize * maxCallsPerMinute))
                 .Select(g => g.Select(x => x.item).ToList())
                 .ToList();
 
@@ -71,8 +71,22 @@ namespace ePubEditor.Core
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 Console.WriteLine($"Starting {i}/{batches.Count}");
 
-                Task runAllRequest = CommpleteMetadata(batch);
+
+                List<List<EpubFileMetadata>> subatches = batch
+                    .Select((item, index) => new { item, index })
+                    .GroupBy(x => x.index / (batchSize ))
+                    .Select(g => g.Select(x => x.item).ToList())
+                    .ToList();
+
+                List<Task> tasks = new List<Task>();
+                foreach (List<EpubFileMetadata> subatch in subatches)
+                {
+                    tasks.Add(CommpleteMetadata(subatch));
+                }
+
+                Task runAllRequest = Task.WhenAll(tasks);
                 Task delayTask = Task.Delay(delayBetweenCallsMs);
+
                 await Task.WhenAll(runAllRequest, delayTask);
 
                 stopwatch.Stop();
@@ -96,6 +110,13 @@ namespace ePubEditor.Core
         private async Task CommpleteMetadata(List<EpubFileMetadata> epubFilesMetadata)
         {
 
+            GenerativeModel model = new GenerativeModel()
+            {
+                ApiKey = _gemeniSettings.Key,
+                Model = Model.Gemini15Flash,
+            };
+
+            
             JsonSerializerOptions options = new()
             {
                 TypeInfoResolver = new DefaultJsonTypeInfoResolver
@@ -124,7 +145,7 @@ namespace ePubEditor.Core
 
             //CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
 
-            GenerateContentResponse response = await _generativeModel.GenerateContent(prompt, generationConfig = generationConfig);
+            GenerateContentResponse response = await model.GenerateContent(prompt, generationConfig = generationConfig);
 
             JsonSerializerOptions deserializeOptions = new()
             {

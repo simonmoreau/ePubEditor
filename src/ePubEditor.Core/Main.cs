@@ -60,16 +60,8 @@ namespace ePubEditor.Core
 
             services.AddSingleton<ChatClient>(chatClient);
 
-            Gemini? geminiSettings = config.GetSection(nameof(Gemini)).Get<Gemini>();
+            services.Configure<Gemini>(options => config.GetSection(nameof(Gemini)).Bind(options));
 
-
-            GenerativeModel model = new GenerativeModel()
-            {
-                ApiKey = geminiSettings.Key,
-                Model = Model.Gemini15Flash,
-            };
-
-            services.AddSingleton<GenerativeModel>(model);
 
             return services;
         }

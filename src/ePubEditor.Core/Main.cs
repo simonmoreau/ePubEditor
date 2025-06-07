@@ -74,7 +74,7 @@ namespace ePubEditor.Core
             //await epubLister.ListEpub();
 
             AIMetadataFetcher? metatadataFetcher = _serviceProvider.GetService<AIMetadataFetcher>();
-            await metatadataFetcher.FetchMetadataWithGemini();
+            await metatadataFetcher.FetchMetadataWithOpenAI();
         }
 
 

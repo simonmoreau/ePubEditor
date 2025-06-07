@@ -1,9 +1,12 @@
 ﻿
+using Azure;
+using Azure.AI.OpenAI;
 using CsvHelper;
 using CsvHelper.Configuration;
 using ePubEditor.Core.Models;
 using ePubEditor.Core.Services;
-using Microsoft.Extensions.AI;
+using Json.Schema;
+using Json.Schema.Generation.Generators;
 using Microsoft.Extensions.Options;
 using Mscc.GenerativeAI;
 using OpenAI.Chat;
@@ -16,6 +19,8 @@ using System.Linq;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Threading.Tasks;
@@ -38,28 +43,63 @@ namespace ePubEditor.Core
 
         public async Task FetchMetadataWithOpenAI()
         {
+            await FetchMetadata(GetMetadataFromOpenAI);
+        }
 
-            ChatOptions _chatOptions = new ChatOptions();
+        private async Task<List<OutputMetadata>> GetMetadataFromOpenAI(string prompt)
+        {
+            // Create a JSON schema for the CalendarEvent structured response
+            JsonSerializerOptions options = JsonSerializerOptions.Default;
 
-            List<Microsoft.Extensions.AI.ChatMessage> conversation = [];
-            conversation.Add(new Microsoft.Extensions.AI.ChatMessage(ChatRole.User, "Hello"));
+            JsonSchemaExporterOptions exporterOptions = new()
+            {
+                TreatNullObliviousAsNonNullable = true,
+            };
 
-            ChatCompletion completion = _chatClient.CompleteChat([
-                        new UserChatMessage("Hi, can you help me?")
-                    ]);
+            JsonNode jsonSchema = options.GetJsonSchemaAsNode(typeof(OutputMetadataList), exporterOptions);
 
-            string result = completion.Content.First().Text;
+            ChatCompletionOptions chatCompletionOptions = new ChatCompletionOptions()
+            {
+                ResponseFormat = ChatResponseFormat.CreateJsonSchemaFormat(
+                        nameof(OutputMetadataList),
+                        BinaryData.FromString(jsonSchema.ToString()))
+            };
+
+            ChatCompletion completion = await _chatClient.CompleteChatAsync(
+                [new UserChatMessage(prompt)],
+                chatCompletionOptions);
+
+            string sanitizeText = completion.Content.First().Text.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace("\t", "");
+
+            if (sanitizeText == null)
+            {
+                return new List<OutputMetadata>();
+            }
+
+            JsonSerializerOptions deserializeOptions = new()
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            OutputMetadataList outputsMetadata = JsonSerializer.Deserialize<OutputMetadataList>(sanitizeText, deserializeOptions);
+            return outputsMetadata.OutputMetadatas;
+
         }
 
         public async Task FetchMetadataWithGemini()
         {
+            await FetchMetadata(GetMetadataFromGemeni);
+        }
+
+        public async Task FetchMetadata(Func<string, Task<List<OutputMetadata>>> getMetadata)
+        {
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
-            const int batchSize = 40;
-            const int maxCallsPerMinute = 15;
+            const int batchSize = 15;
+            const int maxCallsPerMinute = 1;
             const int delayBetweenCallsMs = 60000; // 60,000 ms  = 1 m
 
-            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize* maxCallsPerMinute*2)
+            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize* maxCallsPerMinute)
                 .Select((item, index) => new { item, index })
                 .GroupBy(x => x.index / (batchSize * maxCallsPerMinute))
                 .Select(g => g.Select(x => x.item).ToList())
@@ -81,7 +121,7 @@ namespace ePubEditor.Core
                 List<Task> tasks = new List<Task>();
                 foreach (List<EpubFileMetadata> subatch in subatches)
                 {
-                    tasks.Add(CommpleteMetadata(subatch));
+                    tasks.Add(CommpleteMetadata(subatch, getMetadata));
                 }
 
                 Task runAllRequest = Task.WhenAll(tasks);
@@ -107,16 +147,9 @@ namespace ePubEditor.Core
             }
         }
 
-        private async Task CommpleteMetadata(List<EpubFileMetadata> epubFilesMetadata)
+        private async Task CommpleteMetadata(List<EpubFileMetadata> epubFilesMetadata, Func<string, Task<List<OutputMetadata>>> getMetadata)
         {
 
-            GenerativeModel model = new GenerativeModel()
-            {
-                ApiKey = _gemeniSettings.Key,
-                Model = Model.Gemini15Flash,
-            };
-
-            
             JsonSerializerOptions options = new()
             {
                 TypeInfoResolver = new DefaultJsonTypeInfoResolver
@@ -137,32 +170,11 @@ namespace ePubEditor.Core
                     "If some data is missing from the metadata, complete it based on your own knowledge. " +
                     "If the language is 'UND', please replace it with your own knowledge about the book. ";
 
-            GenerationConfig generationConfig = new GenerationConfig()
-            {
-                ResponseMimeType = "application/json",
-                ResponseSchema = new List<OutputMetadata>()
-            };
+            Console.WriteLine(prompt);
 
-            //CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
 
-            GenerateContentResponse response = await model.GenerateContent(prompt, generationConfig = generationConfig);
+                List<OutputMetadata> outputsMetadata = await getMetadata(prompt);
 
-            JsonSerializerOptions deserializeOptions = new()
-            {
-                PropertyNameCaseInsensitive = true
-            };
-
-            Console.WriteLine("Response from Gemini: ");
-            Console.WriteLine("--------------------------------------------------");
-            Console.Write(response.Text);
-
-            if (string.IsNullOrEmpty(response.Text))
-            {
-                Console.WriteLine("No response received from Gemini.");
-                return;
-            }
-            string sanitizeText = response.Text.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace("\t","");
-            List<OutputMetadata> outputsMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(sanitizeText, deserializeOptions);
 
             List<BookMetadata> completedMetadata = new List<BookMetadata>();
 
@@ -201,6 +213,52 @@ namespace ePubEditor.Core
                 _completedBookMetadata.AddRange(completedMetadata);
             }
 
+        }
+
+        private async Task<List<OutputMetadata>> GetMetadataFromGemeni(string prompt)
+        {
+            GenerativeModel model = new GenerativeModel()
+            {
+                ApiKey = _gemeniSettings.Key,
+                Model = Model.Gemini15Flash,
+            };
+
+            GenerationConfig generationConfig = new GenerationConfig()
+            {
+                ResponseMimeType = "application/json",
+                ResponseSchema = new List<OutputMetadata>()
+            };
+
+            //CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
+
+            GenerateContentResponse response = await model.GenerateContent(prompt, generationConfig = generationConfig);
+
+
+
+            Console.WriteLine("Response from Gemini: ");
+            Console.WriteLine("--------------------------------------------------");
+            Console.Write(response.Text);
+
+            if (string.IsNullOrEmpty(response.Text))
+            {
+                Console.WriteLine("No response received from Gemini.");
+                return null;
+            }
+
+            string sanitizeText = response.Text.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace("\t", "");
+
+            if (sanitizeText == null)
+            {
+                return new List<OutputMetadata>();
+            }
+
+            JsonSerializerOptions deserializeOptions = new()
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            List<OutputMetadata> outputsMetadata = JsonSerializer.Deserialize<List<OutputMetadata>>(sanitizeText, deserializeOptions);
+            return outputsMetadata;
         }
 
         private string SelectValue(string? firstValue, string? fallbackValue)

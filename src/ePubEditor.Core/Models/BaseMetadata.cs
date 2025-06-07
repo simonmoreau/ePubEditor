@@ -28,4 +28,9 @@ namespace ePubEditor.Core.Models
         public int PublicationYear { get; set; }
         public string Description { get; set; }
     }
+
+    internal class OutputMetadataList
+    {
+        public List<OutputMetadata> OutputMetadatas { get; set; } = new List<OutputMetadata>();
+    }
 }

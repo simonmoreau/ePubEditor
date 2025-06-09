@@ -33,7 +33,9 @@ namespace ePubEditor.Core
         private readonly Gemini _gemeniSettings;
         private readonly List<BookMetadata> _completedBookMetadata = new List<BookMetadata>();
         private readonly object _completedBookMetadataLock = new object();
-        private readonly string _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_gemini.csv";
+        private readonly Random _random = new Random();
+
+        private string _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_gemini.csv";
 
         public AIMetadataFetcher(ChatClient chatClient, IOptions<Gemini> gemeniSettings)
         {
@@ -43,6 +45,7 @@ namespace ePubEditor.Core
 
         public async Task FetchMetadataWithOpenAI()
         {
+            _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_openai.csv";
             await FetchMetadata(GetMetadataFromOpenAI);
         }
 
@@ -88,6 +91,7 @@ namespace ePubEditor.Core
 
         public async Task FetchMetadataWithGemini()
         {
+            _outputPath = "C:\\Users\\smoreau\\Downloads\\Output\\output_gemini.csv";
             await FetchMetadata(GetMetadataFromGemeni);
         }
 
@@ -95,11 +99,14 @@ namespace ePubEditor.Core
         {
             List<EpubFileMetadata> epubFileMetadata = await Helper.LoadObjectFromJson<List<EpubFileMetadata>>("epub_files");
 
-            const int batchSize = 15;
-            const int maxCallsPerMinute = 1;
+            const int batchSize = 50;
+            const int maxCallsPerMinute = 4;
             const int delayBetweenCallsMs = 60000; // 60,000 ms  = 1 m
 
-            List<List<EpubFileMetadata>> batches = epubFileMetadata.Take(batchSize* maxCallsPerMinute)
+            IEnumerable<int> indices = Enumerable.Range(0, epubFileMetadata.Count).OrderBy(_ => _random.Next()).Take(batchSize * maxCallsPerMinute);
+            List<EpubFileMetadata> randomEpubFileMetadata = indices.Select(i => epubFileMetadata[i]).ToList();
+
+            List<List<EpubFileMetadata>> batches = randomEpubFileMetadata
                 .Select((item, index) => new { item, index })
                 .GroupBy(x => x.index / (batchSize * maxCallsPerMinute))
                 .Select(g => g.Select(x => x.item).ToList())
@@ -114,7 +121,7 @@ namespace ePubEditor.Core
 
                 List<List<EpubFileMetadata>> subatches = batch
                     .Select((item, index) => new { item, index })
-                    .GroupBy(x => x.index / (batchSize ))
+                    .GroupBy(x => x.index / (batchSize))
                     .Select(g => g.Select(x => x.item).ToList())
                     .ToList();
 
@@ -168,12 +175,13 @@ namespace ePubEditor.Core
                     "both the text provided along with your own knowledge about these book. " +
                     "If you know that the book is part of a series, please add the series to the result. " +
                     "If some data is missing from the metadata, complete it based on your own knowledge. " +
-                    "If the language is 'UND', please replace it with your own knowledge about the book. ";
+                    "If the language is 'UND', please replace it with your own knowledge about the book. " +
+                    "If the ISBN is empty, please add it with your own knowledge about the book.";
 
             Console.WriteLine(prompt);
 
 
-                List<OutputMetadata> outputsMetadata = await getMetadata(prompt);
+            List<OutputMetadata> outputsMetadata = await getMetadata(prompt);
 
 
             List<BookMetadata> completedMetadata = new List<BookMetadata>();
@@ -194,9 +202,12 @@ namespace ePubEditor.Core
                 bookMetadata.Languages.Add(outputMetadata.Language);
                 bookMetadata.Series = outputMetadata.Series;
 
-                if (outputMetadata.PublicationYear != 0)
+                if (!string.IsNullOrEmpty(outputMetadata.PublicationYear))
                 {
-                    bookMetadata.Published = new DateTime(outputMetadata.PublicationYear, 1, 1);
+                    if (int.TryParse(outputMetadata.PublicationYear, out int publicationYear) && publicationYear > 0)
+                    {
+                        bookMetadata.Published = new DateTime(publicationYear, 1, 1);
+                    }
                 }
 
                 bookMetadata.IsbnIdentifier = epubFileMetadata.IsbnIdentifier;
@@ -232,8 +243,6 @@ namespace ePubEditor.Core
             //CountTokensResponse tokenCount = await _generativeModel.CountTokens(prompt);
 
             GenerateContentResponse response = await model.GenerateContent(prompt, generationConfig = generationConfig);
-
-
 
             Console.WriteLine("Response from Gemini: ");
             Console.WriteLine("--------------------------------------------------");

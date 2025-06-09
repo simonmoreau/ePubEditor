@@ -25,7 +25,7 @@ namespace ePubEditor.Core.Models
         public string Author { get; set; }
         public string Series { get; set; }
         public string Language { get; set; }
-        public int PublicationYear { get; set; }
+        public string PublicationYear { get; set; }
         public string Description { get; set; }
     }
 

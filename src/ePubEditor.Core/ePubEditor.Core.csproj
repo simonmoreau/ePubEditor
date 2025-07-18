@@ -19,13 +19,24 @@
 	  <PackageReference Include="Mscc.GenerativeAI" Version="2.6.2" />
 
 	  <PackageReference Include="EpubCore" Version="1.6.2" />
+
+	  <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
  </ItemGroup>
 
   <ItemGroup>
+    <None Update="appsettings.Development.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="Ressources\epub_files.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="Ressources\inputs.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Ressources\renameComicsPrompt.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

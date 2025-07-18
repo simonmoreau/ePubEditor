@@ -1,4 +1,5 @@
 ﻿using Azure.AI.OpenAI;
+using ePubEditor.Core.Comics;
 using ePubEditor.Core.Models;
 using ePubEditor.Core.Services;
 using FuzzySharp;
@@ -44,6 +45,7 @@ namespace ePubEditor.Core
             services = AddAIServices(services);
 
             services.AddSingleton<AIMetadataFetcher>();
+            services.AddSingleton<ComicsRenamer>();
 
             return services.BuildServiceProvider();
         }

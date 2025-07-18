@@ -23,6 +23,8 @@ namespace ePubEditor.Test
         public async Task RenameComics()
         {
             ComicsRenamer comicsRenamer = _main.GetService<ComicsRenamer>();
+            string directoryPath = "C:\\Users\\smoreau\\Desktop\\BD\\BD Library\\0_Day"; // Adjust the path as necessary
+            await comicsRenamer.RenameComics(directoryPath);
         }
     }
 }

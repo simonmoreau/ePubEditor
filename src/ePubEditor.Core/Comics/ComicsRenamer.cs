@@ -84,17 +84,22 @@ namespace ePubEditor.Core.Comics
             JsonSchemaBuilder schemaBuilder = new JsonSchemaBuilder();
             JsonSchema schema = schemaBuilder.FromType<FileList>().Build();
 
+            JsonDocument jsonDoc = schema.ToJsonDocument(new JsonSerializerOptions { WriteIndented = true });
 
-            // To get the schema as a string:
-            string schemaJson = schema.ToJsonDocument(new JsonSerializerOptions { WriteIndented = true }).ToString();
-
-
-            ChatOptions chatOptions = new()
+            using (var stream = new MemoryStream())
             {
-                ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(JsonSerializer.Deserialize<JsonElement>(schemaJson), "Schema")
-            };
+                Utf8JsonWriter writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+                jsonDoc.WriteTo(writer);
+                writer.Flush();
+                string schemaJson = Encoding.UTF8.GetString(stream.ToArray());
 
-            return chatOptions;
+                ChatOptions chatOptions = new()
+                {
+                    ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(JsonSerializer.Deserialize<JsonElement>(schemaJson), "Schema")
+                };
+
+                return chatOptions;
+            }
         }
 
         private async Task<string> GetPrompt(string subdirectory)

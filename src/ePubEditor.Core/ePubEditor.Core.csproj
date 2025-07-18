@@ -12,18 +12,14 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.5" />
 	  <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
 	  <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
-	  
+
 	  <PackageReference Include="Azure.AI.OpenAI" Version="2.2.0-beta.4" />
 	  <PackageReference Include="Microsoft.Extensions.AI" Version="9.5.0" />
-	  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="9.5.0-preview.1.25265.7" />
+	  <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="9.6.0-preview.1.25310.2" />
 	  <PackageReference Include="Mscc.GenerativeAI" Version="2.6.2" />
- </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="EpubCore">
-      <HintPath>..\..\..\EpubCore\EpubCore\bin\Debug\net6.0\EpubCore.dll</HintPath>
-    </Reference>
-  </ItemGroup>
+	  <PackageReference Include="EpubCore" Version="1.6.2" />
+ </ItemGroup>
 
   <ItemGroup>
     <None Update="Ressources\epub_files.json">

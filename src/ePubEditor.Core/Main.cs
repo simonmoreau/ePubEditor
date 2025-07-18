@@ -1,5 +1,4 @@
 ﻿using Azure.AI.OpenAI;
-using EpubCore;
 using ePubEditor.Core.Models;
 using ePubEditor.Core.Services;
 using FuzzySharp;
@@ -24,6 +23,18 @@ namespace ePubEditor.Core
             _serviceProvider = ConfigureServices(new ServiceCollection());
         }
 
+        public T GetService<T>() where T : class
+        {
+            T service = _serviceProvider.GetRequiredService<T>();
+
+            if (service == null)
+            {
+                throw new InvalidOperationException($"Service of type {typeof(T).Name} is not registered.");
+            }
+
+            return service;
+        }
+
         private ServiceProvider ConfigureServices(IServiceCollection services)
         {
             string baseUrl = "https://www.googleapis.com/books/v1/";
@@ -39,31 +50,46 @@ namespace ePubEditor.Core
 
         private IServiceCollection AddAIServices(IServiceCollection services)
         {
-            string executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            string configPath = Path.Combine(executingDirectory, "appsettings.json");
+            // Build a configuration object from JSON file
 
-            IConfigurationRoot config = new ConfigurationBuilder()
-                .AddJsonFile(configPath, optional: true)
-                .Build();
+            string? executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
+            if (string.IsNullOrEmpty(executingDirectory))
+            {
+                throw new InvalidOperationException("Executing directory cannot be determined.");
+            }
+
+            IConfigurationBuilder configurationBuilder = new ConfigurationBuilder()
+                    .SetBasePath(executingDirectory)
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true);
+
+            IConfigurationRoot config = configurationBuilder.Build();
+
+            ConfigureAIServices(services, config);
+
+            services.Configure<Gemini>(options => config.GetSection(nameof(Gemini)).Bind(options));
+
+            return services;
+        }
+
+        private void ConfigureAIServices(IServiceCollection services, IConfigurationRoot config)
+        {
+            // Configure AI services here
             AzureOpenAI? azureOpenAISettigns = config.GetSection(nameof(AzureOpenAI)).Get<AzureOpenAI>();
 
             string deploymentName = azureOpenAISettigns.ModelId;
             Uri endpoint = new Uri(azureOpenAISettigns.Endpoint);
-            ApiKeyCredential apiKey = new ApiKeyCredential(azureOpenAISettigns.Key);
+            ApiKeyCredential apiKeyCredential = new ApiKeyCredential(azureOpenAISettigns.Key);
 
-            AzureOpenAIClient azureClient = new(
-                    endpoint,
-                   apiKey);
+            IChatClient openAIClient = new AzureOpenAIClient(endpoint, apiKeyCredential)
+                    .GetChatClient(deploymentName).AsIChatClient();
 
-            ChatClient chatClient = azureClient.GetChatClient(azureOpenAISettigns.ModelId);
+            IChatClient client = new ChatClientBuilder(openAIClient)
+                .UseFunctionInvocation()
+                .Build();
 
-            services.AddSingleton<ChatClient>(chatClient);
-
-            services.Configure<Gemini>(options => config.GetSection(nameof(Gemini)).Bind(options));
-
-
-            return services;
+            services.AddSingleton<IChatClient>(client);
         }
 
         public async Task Start()

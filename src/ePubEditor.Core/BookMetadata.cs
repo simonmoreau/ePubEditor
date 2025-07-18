@@ -52,25 +52,25 @@ namespace ePubEditor.Core
                 writer.AddPublisher(Publisher);
             }
 
-            foreach (string language in Languages)
-            {
-                writer.AddLanguage(language);
-            }
+            //foreach (string language in Languages)
+            //{
+            //    writer.AddLanguage(language);
+            //}
 
-            if (Published.HasValue)
-            {
-                writer.SetDate(Published.Value);
-            }
+            //if (Published.HasValue)
+            //{
+            //    writer.SetDate(Published.Value);
+            //}
 
-            if (!string.IsNullOrWhiteSpace(GoogleIdentifier))
-            {
-                writer.AddIdentifier("GOOGLE", GoogleIdentifier);
-            }
+            //if (!string.IsNullOrWhiteSpace(GoogleIdentifier))
+            //{
+            //    writer.AddIdentifier("GOOGLE", GoogleIdentifier);
+            //}
 
-            if (!string.IsNullOrWhiteSpace(IsbnIdentifier))
-            {
-                writer.AddISBN(IsbnIdentifier);
-            }
+            //if (!string.IsNullOrWhiteSpace(IsbnIdentifier))
+            //{
+            //    writer.AddISBN(IsbnIdentifier);
+            //}
 
 
             string authorNames = string.Join(", ", Authors);

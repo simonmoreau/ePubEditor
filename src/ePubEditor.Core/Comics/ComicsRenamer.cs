@@ -8,6 +8,7 @@ using System.Reflection.Emit;
 using System.Text;
 using Json.Schema;
 using Json.More;
+using System.Diagnostics;
 
 
 namespace ePubEditor.Core.Comics
@@ -60,23 +61,45 @@ namespace ePubEditor.Core.Comics
             string[] subdirectories = Directory.GetDirectories(directoryPath);
             ChatOptions chatOptions = CreateChatOptions();
 
+            int maxPerMinute = 80;
+            int delayMs = 750; // 60,000 ms / 80 = 750 ms
+            SemaphoreSlim semaphore = new SemaphoreSlim(maxPerMinute);
+            List<Task> tasks = new List<Task>();
+            int processedCount = 0;
+            object lockObj = new object();
+
             foreach (string subdirectory in subdirectories)
             {
-                string prompt = await GetPrompt(subdirectory);
-
-                ChatResponse response = await _chatClient.GetResponseAsync(prompt, chatOptions);
-
-                FileList? fileList = JsonSerializer.Deserialize<FileList>(response.Text);
-
-                if (fileList == null || fileList.Files.Count == 0)
+                
+                await semaphore.WaitAsync();
+                Task task = Task.Run(async () =>
                 {
-                    throw new InvalidOperationException("No files found in the response.");
-                }
-
-                RenameFilesInDirectory(fileList, subdirectory);
+                    try
+                    {
+                        Console.WriteLine($"[DEBUG] Processing directory {processedCount}/{subdirectories.Length}: {subdirectory}");
+                        string prompt = await GetPrompt(subdirectory);
+                        ChatResponse response = await _chatClient.GetResponseAsync(prompt, chatOptions);
+                        FileList? fileList = JsonSerializer.Deserialize<FileList>(response.Text);
+                        if (fileList == null || fileList.Files.Count == 0)
+                        {
+                            throw new InvalidOperationException("No files found in the response.");
+                        }
+                        RenameFilesInDirectory(fileList, subdirectory);
+                        lock (lockObj)
+                        {
+                            processedCount++;
+                            Debug.WriteLine($"[DEBUG] Processed {processedCount}/{subdirectories.Length} directories.");
+                        }
+                    }
+                    finally
+                    {
+                        await Task.Delay(delayMs);
+                        semaphore.Release();
+                    }
+                });
+                tasks.Add(task);
             }
-
-
+            await Task.WhenAll(tasks);
         }
 
         private ChatOptions CreateChatOptions()

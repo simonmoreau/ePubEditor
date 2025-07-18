@@ -37,7 +37,7 @@ namespace ePubEditor.Core
             return services.BuildServiceProvider();
         }
 
-        public IServiceCollection AddAIServices(IServiceCollection services)
+        private IServiceCollection AddAIServices(IServiceCollection services)
         {
             string executingDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             string configPath = Path.Combine(executingDirectory, "appsettings.json");

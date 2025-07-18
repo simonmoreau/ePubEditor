@@ -19,8 +19,7 @@
 	  <PackageReference Include="Mscc.GenerativeAI" Version="2.6.2" />
 
 	  <PackageReference Include="EpubCore" Version="1.6.2" />
-
-	  <PackageReference Include="Newtonsoft.Json.Schema" Version="4.0.1" />
+	  <PackageReference Include="JsonSchema.Net.Generation" Version="5.0.4" />
  </ItemGroup>
 
   <ItemGroup>

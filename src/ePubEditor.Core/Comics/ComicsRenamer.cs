@@ -1,12 +1,14 @@
-﻿using Json.Schema.Generation.Generators;
+﻿using Json.Schema.Generation;
+using System.Text.Json;
+using Json.Schema.Generation.Generators;
 using Microsoft.Extensions.AI;
-using Newtonsoft.Json.Schema.Generation;
 using System;
 using System.IO;
+using System.Reflection.Emit;
 using System.Text;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+using Json.Schema;
+using Json.More;
+
 
 namespace ePubEditor.Core.Comics
 {
@@ -56,18 +58,11 @@ namespace ePubEditor.Core.Comics
             }
 
             string[] subdirectories = Directory.GetDirectories(directoryPath);
+            ChatOptions chatOptions = CreateChatOptions();
+
             foreach (string subdirectory in subdirectories)
             {
                 string prompt = await GetPrompt(subdirectory);
-
-                // Get the schema of the class for the structured response
-                JSchemaGenerator generator = new JSchemaGenerator();
-                string jsonSchema = generator.Generate(typeof(FileList)).ToString();
-
-                ChatOptions chatOptions = new()
-                {
-                    ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(JsonSerializer.Deserialize<JsonElement>(jsonSchema), "Schema")
-                };
 
                 ChatResponse response = await _chatClient.GetResponseAsync(prompt, chatOptions);
 
@@ -82,6 +77,24 @@ namespace ePubEditor.Core.Comics
             }
 
 
+        }
+
+        private ChatOptions CreateChatOptions()
+        {
+            JsonSchemaBuilder schemaBuilder = new JsonSchemaBuilder();
+            JsonSchema schema = schemaBuilder.FromType<FileList>().Build();
+
+
+            // To get the schema as a string:
+            string schemaJson = schema.ToJsonDocument(new JsonSerializerOptions { WriteIndented = true }).ToString();
+
+
+            ChatOptions chatOptions = new()
+            {
+                ResponseFormat = Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema(JsonSerializer.Deserialize<JsonElement>(schemaJson), "Schema")
+            };
+
+            return chatOptions;
         }
 
         private async Task<string> GetPrompt(string subdirectory)

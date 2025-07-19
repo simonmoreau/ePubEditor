@@ -46,6 +46,7 @@ namespace ePubEditor.Core
 
             services.AddSingleton<AIMetadataFetcher>();
             services.AddSingleton<ComicsRenamer>();
+            services.AddSingleton<ComicVineWriter>();
 
             return services.BuildServiceProvider();
         }

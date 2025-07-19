@@ -26,5 +26,12 @@ namespace ePubEditor.Test
             string directoryPath = "C:\\Users\\smoreau\\Desktop\\BD\\BD Library\\0_Day"; // Adjust the path as necessary
             await comicsRenamer.RenameComics(directoryPath);
         }
+
+        [Fact]
+        public async Task RunComicVineWriter()
+        {
+            ComicVineWriter comicVineWriter = _main.GetService<ComicVineWriter>();
+            await comicVineWriter.RunComicVineWriter();
+        }
     }
 }

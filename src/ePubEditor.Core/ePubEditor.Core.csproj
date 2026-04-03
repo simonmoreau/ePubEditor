@@ -23,6 +23,12 @@
  </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="ComicVineApi">
+      <HintPath>..\..\..\ComicVineApi\ComicVineApi\bin\Debug\netstandard2.1\ComicVineApi.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="appsettings.Development.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

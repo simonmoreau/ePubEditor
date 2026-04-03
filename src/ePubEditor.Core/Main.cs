@@ -71,6 +71,7 @@ namespace ePubEditor.Core
 
             ConfigureAIServices(services, config);
 
+            services.Configure<Settings>(options => config.GetSection(nameof(Settings)).Bind(options));
             services.Configure<Gemini>(options => config.GetSection(nameof(Gemini)).Bind(options));
 
             return services;
@@ -79,11 +80,11 @@ namespace ePubEditor.Core
         private void ConfigureAIServices(IServiceCollection services, IConfigurationRoot config)
         {
             // Configure AI services here
-            AzureOpenAI? azureOpenAISettigns = config.GetSection(nameof(AzureOpenAI)).Get<AzureOpenAI>();
+            Settings? settings = config.GetSection(nameof(Settings)).Get<Settings>();
 
-            string deploymentName = azureOpenAISettigns.ModelId;
-            Uri endpoint = new Uri(azureOpenAISettigns.Endpoint);
-            ApiKeyCredential apiKeyCredential = new ApiKeyCredential(azureOpenAISettigns.Key);
+            string deploymentName = settings.AzureOpenAI.ModelId;
+            Uri endpoint = new Uri(settings.AzureOpenAI.Endpoint);
+            ApiKeyCredential apiKeyCredential = new ApiKeyCredential(settings.AzureOpenAI.Key);
 
             IChatClient openAIClient = new AzureOpenAIClient(endpoint, apiKeyCredential)
                     .GetChatClient(deploymentName).AsIChatClient();

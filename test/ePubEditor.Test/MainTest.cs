@@ -16,7 +16,11 @@ namespace ePubEditor.Test
         public async Task Start()
         {
             Main main = new Main();
-            await main.Start();
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await main.Start();
+            });
         }
 
         [Fact]

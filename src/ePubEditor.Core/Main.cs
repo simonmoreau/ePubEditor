@@ -1,5 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 using ePubEditor.Core.Comics;
+using ePubEditor.Core.Graphiti;
 using ePubEditor.Core.Models;
 using ePubEditor.Core.Services;
 using FuzzySharp;
@@ -42,11 +43,16 @@ namespace ePubEditor.Core
             services.AddHttpClient<IGoogleBook, GoogleBook>
                 (client => client.BaseAddress = new Uri(baseUrl));
 
+            string graphitiUrl = "http://100.115.116.98:8000/";
+            services.AddHttpClient<IGraphitiService, GraphitiService>
+                (client => client.BaseAddress = new Uri(graphitiUrl));
+
             services = AddAIServices(services);
 
             services.AddSingleton<AIMetadataFetcher>();
             services.AddSingleton<ComicsRenamer>();
             services.AddSingleton<ComicVineWriter>();
+            services.AddSingleton<GraphitiImporter>();
 
             return services.BuildServiceProvider();
         }

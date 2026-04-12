@@ -43,7 +43,7 @@ namespace ePubEditor.Core
             services.AddHttpClient<IGoogleBook, GoogleBook>
                 (client => client.BaseAddress = new Uri(baseUrl));
 
-            string graphitiUrl = "http://100.115.116.98:8000/";
+            string graphitiUrl = "http://100.115.116.98:8001/";
             services.AddHttpClient<IGraphitiService, GraphitiService>
                 (client => client.BaseAddress = new Uri(graphitiUrl));
 

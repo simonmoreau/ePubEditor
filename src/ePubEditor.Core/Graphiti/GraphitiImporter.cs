@@ -23,7 +23,7 @@ namespace ePubEditor.Core.Graphiti
         {
             try
             {
-                string resourcesDirectory = @"C:\Users\smoreau\Documents\Obsidian\Notes\EAI\Eurotunnel";
+                string resourcesDirectory = @"C:\Users\smoreau\Documents\Obsidian\Notes\EAI\Arlanxeo";
 
                 if (!Directory.Exists(resourcesDirectory))
                 {
@@ -32,35 +32,35 @@ namespace ePubEditor.Core.Graphiti
                 }
 
                 string[] markdownFiles = Directory.GetFiles(resourcesDirectory, "*.md", SearchOption.AllDirectories);
-                List<Message> messages = new List<Message>();
+                List<Episode> episodes = new List<Episode>();
 
                 foreach (string markdownFile in markdownFiles)
                 {
                     string content = await File.ReadAllTextAsync(markdownFile);
                     string name = Path.GetFileNameWithoutExtension(markdownFile);
                     DateTime timestamp = File.GetLastWriteTimeUtc(markdownFile);
+                    string obsidanPath = markdownFile.Replace(@"C:\Users\smoreau\Documents\Obsidian\Notes\", "");
+                    string obsidianLink = $"obsidian://open?vault=Notes&file={Uri.EscapeDataString(obsidanPath)}";
 
-                    Message message = new Message(
-                        content,
+                    Episode episode = new Episode(
+                        "WebPermis Project :" + content,
                         null,
                         name,
-                        "user",
-                        "text",
                         timestamp,
-                        "Meeting Note"
+                        obsidianLink
                     );
 
-                    messages.Add(message);
+                    episodes.Add(episode);
                 }
 
-                if (messages.Count == 0)
+                if (episodes.Count == 0)
                 {
                     Console.WriteLine($"No markdown files were found in {resourcesDirectory}.");
                     return;
                 }
 
-                string groupId = Path.GetFileName(resourcesDirectory);
-                await _graphitiService.CreateMessage(groupId, messages);
+                string groupId = "main";
+                await _graphitiService.CreateEpisodes(groupId, episodes);
             }
             catch (Exception ex)
             {

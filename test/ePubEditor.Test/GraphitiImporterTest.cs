@@ -59,9 +59,9 @@ public class GraphitiImporterTest
     {
         public string? GroupId { get; private set; }
 
-        public List<Message> Messages { get; private set; } = new List<Message>();
+        public List<Episode> Messages { get; private set; } = new List<Episode>();
 
-        public Task<Response> CreateMessage(string group_id, List<Message> messages)
+        public Task<Response> CreateEpisodes(string group_id, List<Episode> messages)
         {
             GroupId = group_id;
             Messages = messages;

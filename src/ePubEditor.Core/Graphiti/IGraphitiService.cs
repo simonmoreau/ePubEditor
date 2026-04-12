@@ -2,6 +2,6 @@
 {
     internal interface IGraphitiService
     {
-        Task<Response> CreateMessage(string group_id, List<Message> messages);
+        Task<Response> CreateEpisodes(string group_id, List<Episode> messages);
     }
 }

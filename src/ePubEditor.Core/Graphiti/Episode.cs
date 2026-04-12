@@ -8,15 +8,13 @@ using System.Threading.Tasks;
 namespace ePubEditor.Core.Graphiti
 {
     // Root myDeserializedClass = JsonSerializer.Deserialize<Root>(myJsonResponse);
-    public class Message
+    public class Episode
     {
         [JsonConstructor]
-        public Message(
+        public Episode(
             string content,
             string? uuid,
             string name,
-            string roleType,
-            string role,
             DateTime timestamp,
             string sourceDescription
         )
@@ -24,8 +22,6 @@ namespace ePubEditor.Core.Graphiti
             this.Content = content;
             this.Uuid = uuid;
             this.Name = name;
-            this.RoleType = roleType;
-            this.Role = role;
             this.Timestamp = timestamp;
             this.SourceDescription = sourceDescription;
         }
@@ -38,12 +34,6 @@ namespace ePubEditor.Core.Graphiti
 
         [JsonPropertyName("name")]
         public string Name { get; }
-
-        [JsonPropertyName("role_type")]
-        public string RoleType { get; }
-
-        [JsonPropertyName("role")]
-        public string Role { get; }
 
         [JsonPropertyName("timestamp")]
         public DateTime Timestamp { get; }

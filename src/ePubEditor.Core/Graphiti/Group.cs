@@ -7,17 +7,17 @@ namespace ePubEditor.Core.Graphiti
         [JsonConstructor]
         public Group(
             string groupId,
-            List<Message> messages
+            List<Episode> episodes
         )
         {
             this.GroupId = groupId;
-            this.Messages = messages;
+            this.Episodes = episodes;
         }
 
         [JsonPropertyName("group_id")]
         public string GroupId { get; }
 
-        [JsonPropertyName("messages")]
-        public IReadOnlyList<Message> Messages { get; }
+        [JsonPropertyName("episodes")]
+        public IReadOnlyList<Episode> Episodes { get; }
     }
 }

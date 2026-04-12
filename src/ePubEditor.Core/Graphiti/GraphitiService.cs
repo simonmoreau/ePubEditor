@@ -19,12 +19,12 @@ namespace ePubEditor.Core.Graphiti
             _httpClient = httpClient;
         }
 
-        public async Task<Response> CreateMessage(string group_id, List<Message> messages)
+        public async Task<Response> CreateEpisodes(string group_id, List<Episode> episodes)
         {
-            string uri = $"messages";
+            string uri = $"episodes";
             HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, uri);
 
-            var addCommentRequest = new { group_id, messages };
+            var addCommentRequest = new { group_id, episodes };
 
             string serializedCommentToCreate = JsonSerializer.Serialize(addCommentRequest);
 
